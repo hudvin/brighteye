@@ -32,9 +32,12 @@ P3D_STOMION = numpy.float32([10.0, 0.0, -75.0])  # 62
 # The points to track
 # These points are the ones used by PnP
 # to estimate the 3D pose of the face
+
+
+#10 &13
 TRACKED_POINTS = (0, 4, 8, 12, 16, 17, 26, 27, 30, 33, 36, 39, 42, 45, 62)
 
-image_path = "/home/kontiki/projects/work/level11/notebooks/portman4.jpg"
+image_path = "facenet_experiments/images/portman6.jpg"
 # Read Image
 im = cv2.imread(image_path)
 
@@ -92,7 +95,7 @@ landmarks_3D = numpy.float32([P3D_RIGHT_SIDE,
                               P3D_LEFT_EYE,
                               P3D_STOMION])
 
-PREDICTOR_PATH = "/home/kontiki/projects/work/level11/notebooks/shape_predictor_68_face_landmarks.dat"
+PREDICTOR_PATH = "facenet_experiments/dlib_models//shape_predictor_68_face_landmarks.dat"
 predictor = dlib.shape_predictor(PREDICTOR_PATH)
 detector = dlib.get_frontal_face_detector()
 
@@ -129,13 +132,10 @@ retval, rvec, tvec = cv2.solvePnP(landmarks_3D,
 axis = numpy.float32([[50, 0, 0],
                       [0, 50, 0],
                       [0, 0, 50],
-                      [21.1, 0.0, -48.0]
                       ])
 
 
 landmarks_3D_2D = numpy.delete(landmarks_3D, 2, 1)
-M, _ = cv2.findHomography(landmarks_3D_2D,landmarks_2D)
-
 
 imgpts, jac = cv2.projectPoints(axis, rvec, tvec, camera_matrix, camera_distortion)
 
@@ -148,12 +148,25 @@ cv2.line(im, sellion_xy, tuple(imgpts[1].ravel()), (0, 255, 0), 3)  # GREEN
 cv2.line(im, sellion_xy, tuple(imgpts[2].ravel()), (255, 0, 0), 3)  # BLUE
 cv2.line(im, sellion_xy, tuple(imgpts[0].ravel()), (0, 0, 255), 3)  # RED
 
-#cv2.circle(im, tuple(imgpts[3]), 10,  (0,0,255))
+from skimage.transform import AffineTransform,SimilarityTransform, ProjectiveTransform, warp, rotate
 
-cv2.circle(im, tuple(imgpts[3].ravel()) , 5, (0, 0, 255), -1)
+transformer = ProjectiveTransform()
+matrix = transformer.estimate(landmarks_3D_2D, landmarks_2D)
+print matrix
 
-#cv2.namedWindow("face2", cv2.WINDOW_NORMAL)
-cv2.imshow('face2', cv2.warpPerspective(im, M,im.shape[1::-1]))
+right_eye = landmarks_2D[10]
+left_eye = landmarks_2D[13]
+
+
+A = numpy.arctan((left_eye[1]-right_eye[1])/(left_eye[0]-right_eye[0]))
+
+#just_scale = AffineTransform(scale=[transformer.scale[0]*1,transformer.scale[1]])
+
+#cv2.imshow('face2', cv2.warpAffine(im, M,im.shape[1::-1]))
+
+cv2.namedWindow("face2", cv2.WINDOW_AUTOSIZE)
+
+cv2.imshow('face2', rotate(im, A*57.3))
 
 
 cv2.imshow('face', im)
