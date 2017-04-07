@@ -129,6 +129,10 @@ retval, rvec, tvec = cv2.solvePnP(landmarks_3D,
                                   landmarks_2D,
                                   camera_matrix, camera_distortion)
 
+
+rmat, _ =  cv2.Rodrigues(rvec)
+rmat = rmat.astype(numpy.float32)
+
 axis = numpy.float32([[50, 0, 0],
                       [0, 50, 0],
                       [0, 0, 50],
@@ -168,6 +172,14 @@ cv2.namedWindow("face2", cv2.WINDOW_AUTOSIZE)
 
 cv2.imshow('face2', rotate(im, A*57.3))
 
+
+from numpy.linalg import inv
+from numpy import  transpose
+rows,cols,ch = im.shape
+
+dst = cv2.warpPerspective(im, rmat, (rows, cols) )
+
+cv2.imshow('face3', dst)
 
 cv2.imshow('face', im)
 cv2.waitKey(-1)
