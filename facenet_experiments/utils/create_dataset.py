@@ -5,14 +5,16 @@ import sys
 from distutils.dir_util import mkpath
 
 import shutil
+from functools import partial
 
 import cv2
+import multiprocessing
+
 from face_analyzer import FaceDetector
 
 
 def main(args):
     print(args)
-    min_face_widht, min_face_height = map(lambda x: int(x), args.min_face_dims.split("x"))
     persons_dirs = glob.glob(args.input_dir + "/*")
     persons_files = map(lambda dir: (dir,
                                      filter(lambda filepath: filepath.endswith((".jpg", ".png", ".jpeg")),
@@ -21,33 +23,40 @@ def main(args):
     if args.max_persons != -1:
         persons_files = persons_files[:args.max_persons]
 
+    pool = multiprocessing.Pool(processes=args.threads)
+    process_persons_args = partial(process_persons, args)
+    pool.map(process_persons_args, persons_files)
+
+
+def process_persons(args, person_files):
+    min_face_widht, min_face_height = map(lambda x: int(x), args.min_face_dims.split("x"))
     face_detector = FaceDetector()
     person_counter = 0
-    for person_dir, person_files in persons_files:
-        person_counter += 1
-        file_counter = 0
-        output_person_dir = args.output_dir + "/" + os.path.basename(person_dir)
-        mkpath(output_person_dir)
-        for person_file in person_files:
-            print person_file
-            faces = face_detector.find_faces(cv2.imread(person_file))
-            if not faces:
-                print "skipping %s, no faces found" % (person_file)
-            elif len(faces) > 1:
-                print "skipping %s, contains %s faces" % (person_file, len(faces))
+    (dir, files) = person_files
+    person_counter += 1
+    file_counter = 0
+    output_person_dir = args.output_dir + "/" + os.path.basename(dir)
+    mkpath(output_person_dir)
+    for person_file in files:
+        print person_file
+        faces = face_detector.find_faces(cv2.imread(person_file))
+        if not faces:
+            print "skipping %s, no faces found" % (person_file)
+        elif len(faces) > 1:
+            print "skipping %s, contains %s faces" % (person_file, len(faces))
+        else:
+            face = faces[0]
+            face_width = face["width"]
+            face_height = face["height"]
+            if face_width >= min_face_widht and face_height >= min_face_height:
+                file_counter += 1
+                shutil.copyfile(person_file, output_person_dir + "/" + os.path.basename(person_file))
+                if args.max_photos != -1 and file_counter >= args.max_photos:
+                    break
             else:
-                face = faces[0]
-                face_width = face["width"]
-                face_height = face["height"]
-                if face_width >= min_face_widht and face_height >= min_face_height:
-                    file_counter += 1
-                    shutil.copyfile(person_file, output_person_dir + "/" + os.path.basename(person_file))
-                    if args.max_photos != -1 and file_counter >= args.max_photos:
-                        break
-                else:
-                    print "skipping %s, because face dims are too small - (%s x %s)" % (
+                print "skipping %s, because face dims are too small - (%s x %s)" % (
                     person_file, face_width, face_height)
-        print("person counter: %s" % person_counter)
+    print("person counter: %s" % person_counter)
 
 
 def parse_arguments(argv):
@@ -58,7 +67,8 @@ def parse_arguments(argv):
                         help='Directory to store processed images grouped by person name')
     parser.add_argument('--max-photos', type=int, help='Number of photos per each person', default=-1)
     parser.add_argument('--max-persons', type=int, help='Max number of persons', default=-1)
-    parser.add_argument('--min_face_dims', type=str, help='Min dims(widthxheight) of face', default="100x100")
+    parser.add_argument('--min-face-dims', type=str, help='Min dims(widthxheight) of face', default="100x100")
+    parser.add_argument('--threads', type=int, help='Num of threads to use', default=6)
     # parser.add_argument('--num-faces', type=int, help='Max number of faces on image', default=1)
     return parser.parse_args(argv)
 
