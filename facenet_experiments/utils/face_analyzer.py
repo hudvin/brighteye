@@ -1,11 +1,34 @@
+import os
+
 import dlib
+from skimage import io
+
+
+def get_abs_path(current_dir, relative_path):
+    return os.path.abspath(current_dir + relative_path)
+
 
 class EmbeddingsExtractor:
-    pass
+    def __init__(self):
+        self.detector = dlib.get_frontal_face_detector()
+        current_dir = (os.path.dirname(os.path.realpath(__file__)))
+        self.shape_predictor = dlib.shape_predictor(get_abs_path(current_dir, "/../dlib_models/shape_predictor_68_face_landmarks.dat"))
+        self.face_recognizer = dlib.face_recognition_model_v1(get_abs_path(current_dir, "/../dlib_models/dlib_face_recognition_resnet_model_v1.dat"))
+
+    def get_embeddings(self, person_files):
+        embeddings = []
+        for person_file in person_files:
+            image = io.imread(person_file)
+            detected_faces = self.detector(image, 1)
+            shape = self.shape_predictor(image, detected_faces[0])
+            face_descriptor = list(self.face_recognizer.compute_face_descriptor(image, shape))
+            embeddings.append({"file": person_file, "embeddings": face_descriptor})
+        return embeddings
 
 
 class OutlierDetector:
     pass
+
 
 class FaceDetector:
     def __init__(self):
