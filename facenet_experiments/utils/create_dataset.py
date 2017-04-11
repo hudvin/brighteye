@@ -7,10 +7,9 @@ from distutils.dir_util import mkpath
 import shutil
 from functools import partial
 
-import cv2
 import multiprocessing
 
-from face_analyzer import FaceDetector
+from face_analyzer import FaceDetector, FaceFilter
 
 
 def main(args):
@@ -37,25 +36,17 @@ def process_persons(args, person_files):
     file_counter = 0
     output_person_dir = args.output_dir + "/" + os.path.basename(dir)
     mkpath(output_person_dir)
+    face_filter = FaceFilter(face_detector)
     for person_file in files:
         print person_file
-        faces = face_detector.find_faces(cv2.imread(person_file))
-        if not faces:
-            print "skipping %s, no faces found" % (person_file)
-        elif len(faces) > 1:
-            print "skipping %s, contains %s faces" % (person_file, len(faces))
+        error, result = face_filter.filter(person_file, min_face_widht, min_face_height)
+        if result:
+            file_counter += 1
+            shutil.copyfile(person_file, output_person_dir + "/" + os.path.basename(person_file))
+            if args.max_photos != -1 and file_counter >= args.max_photos:
+                break
         else:
-            face = faces[0]
-            face_width = face["width"]
-            face_height = face["height"]
-            if face_width >= min_face_widht and face_height >= min_face_height:
-                file_counter += 1
-                shutil.copyfile(person_file, output_person_dir + "/" + os.path.basename(person_file))
-                if args.max_photos != -1 and file_counter >= args.max_photos:
-                    break
-            else:
-                print "skipping %s, because face dims are too small - (%s x %s)" % (
-                    person_file, face_width, face_height)
+            print error
     print("person counter: %s" % person_counter)
 
 

@@ -1,11 +1,33 @@
 import os
 
+import cv2
 import dlib
 from skimage import io
 
 
 def get_abs_path(current_dir, relative_path):
     return os.path.abspath(current_dir + relative_path)
+
+
+class FaceFilter:
+    def __init__(self, face_detector):
+        self.face_detector = face_detector
+
+    def filter(self, person_file, min_width, min_height):
+        faces = self.face_detector.find_faces(cv2.imread(person_file))
+        if not faces:
+            return "skipping %s, no faces found" % person_file, None
+        elif len(faces) > 1:
+            return "skipping %s, contains %s faces" % (person_file, len(faces)), None
+        else:
+            face = faces[0]
+            face_width = face["width"]
+            face_height = face["height"]
+            if face_width >= min_width and face_height >= min_height:
+                return None, True
+            else:
+                return "skipping %s, because face dims are too small - (%s x %s)" % (
+                    person_file, face_width, face_height), None
 
 
 class EmbeddingsExtractor:
@@ -27,7 +49,11 @@ class EmbeddingsExtractor:
 
 
 class OutlierDetector:
-    pass
+    def __init__(self):
+        pass
+
+    def detect(self, embeddings):
+        pass
 
 
 class FaceDetector:
