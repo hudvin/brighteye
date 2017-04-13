@@ -3,6 +3,8 @@ import os
 import cv2
 import dlib
 from skimage import io
+import numpy as np
+from scipy.spatial import distance
 
 
 def get_abs_path(current_dir, relative_path):
@@ -48,12 +50,46 @@ class EmbeddingsExtractor:
         return embeddings
 
 
-class OutlierDetector:
+class CentroidFilter:
     def __init__(self):
-        pass
+        self.embeddings_extractor = EmbeddingsExtractor()
 
-    def detect(self, embeddings):
-        pass
+    def filter(self, person_files, threshold):
+        data_list = []
+        for person_file in person_files:
+            # because it can take list of files as argument
+            # so we pass list and get list
+            single_result = self.embeddings_extractor.get_embeddings([person_file])[0]
+            data_list.append(np.array([single_result["file"]] + single_result["embeddings"]))
+
+        # convert to np array
+        data_list = np.array(data_list)
+        # extract embeddings column and convert it to float
+        embeddings = np.delete(data_list, 0, 1).astype(float)
+        # get labels column, by some reason last part is required
+        labels = data_list[:, [0]][:, 0]
+        # calculate centroid
+        centroid = np.array([np.mean(row) for row in embeddings.T])
+        # convert it to row
+        centroid = centroid.T
+        # 128 elements in row
+        distances = np.array([distance.euclidean(centroid, row) for row in embeddings])
+        # join label and distance columns
+        label_distance_result = np.column_stack((labels, distances))
+        # make it typed
+        label_distance_result = np.core.records.fromarrays(label_distance_result.transpose(),
+                                                           np.dtype([('person_file', "S256"), ('distance', 'float')]))
+        # sort by desc
+        label_distance_result.sort(order=['distance'])
+        label_distance_result = label_distance_result[::-1]
+
+        def split(arr, threshold):
+            bad = np.array(filter(lambda row: row[1] > threshold, arr))
+            good = np.setdiff1d(label_distance_result, bad)
+            return bad, good
+
+        bad, good = split(label_distance_result, threshold)
+        return bad, good
 
 
 class FaceDetector:

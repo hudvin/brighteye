@@ -2,40 +2,34 @@ import glob
 import os
 import unittest
 
-from face_analyzer import EmbeddingsExtractor, FaceDetector, FaceFilter
+from face_analyzer import EmbeddingsExtractor, FaceDetector, FaceFilter, CentroidFilter
 
 faces_800_root = os.environ['faces_800']
 
-class FaceAnalyzerTest(unittest.TestCase):
 
+class FaceAnalyzerTest(unittest.TestCase):
     @unittest.skip
     def test_embeddings_extractor(self):
         embeddings_extractor = EmbeddingsExtractor()
         print embeddings_extractor.get_embeddings(["facenet_experiments/images/portman1.jpg"])
 
-
     def test_outliers_detector(self):
         face_filter = FaceFilter(FaceDetector())
-        persons_dir = glob.glob(faces_800_root +"14th Dalai Lama/*.jpg")
-        embeddings_extractor = EmbeddingsExtractor()
+        persons_dir = glob.glob(faces_800_root + "David Hidalgo/*.jpg")
 
-        results = []
+        files = []
         for person_file in persons_dir:
             error, result = face_filter.filter(person_file, 100, 100)
             if result:
-                results.append(embeddings_extractor.get_embeddings([person_file])[0])
+                files.append(person_file)
                 print person_file
             else:
                 print error
-        print results
-        data_list = []
-        for item in results:
-            rec = []
-            rec.append(item["file"])
-            rec.extend(item["embeddings"])
-            data_list.append(rec)
-        print data_list
 
+        centroid_filter = CentroidFilter()
+        bad, good = centroid_filter.filter(files, 0.5)
+        print "bad photos: \n", bad
+        print "good photos:\n", good
 
 
 if __name__ == '__main__':
