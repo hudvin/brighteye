@@ -11,7 +11,8 @@ class FaceAnalyzerTest(unittest.TestCase):
     @unittest.skip
     def test_embeddings_extractor(self):
         embeddings_extractor = EmbeddingsExtractor()
-        print embeddings_extractor.get_embeddings(["facenet_experiments/images/portman1.jpg"])
+        result, error = embeddings_extractor.get_embeddings("facenet_experiments/images/portman1.jpg")
+        print result, error
 
     def test_outliers_detector(self):
         face_filter = FaceFilter(FaceDetector())

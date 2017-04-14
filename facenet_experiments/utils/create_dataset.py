@@ -1,4 +1,6 @@
 import argparse
+import csv
+import distutils
 import glob
 import os
 import sys
@@ -9,11 +11,14 @@ from functools import partial
 
 import multiprocessing
 
-from face_analyzer import FaceDetector, FaceFilter
+from face_analyzer import FaceDetector, FaceFilter, CentroidFilter, Errors
+from output_writer import OutputWriter
 
 
 def main(args):
     print(args)
+    output_dirs = OutputWriter(args.output_dir)
+
     persons_dirs = glob.glob(args.input_dir + "/*")
     persons_files = map(lambda dir: (dir,
                                      filter(lambda filepath: filepath.endswith((".jpg", ".png", ".jpeg")),
@@ -23,31 +28,42 @@ def main(args):
         persons_files = persons_files[:args.max_persons]
 
     pool = multiprocessing.Pool(processes=args.threads)
-    process_persons_args = partial(process_persons, args)
+    process_persons_args = partial(process_persons, args, output_dirs)
     pool.map(process_persons_args, persons_files)
 
 
-def process_persons(args, person_files):
+def process_persons(args, output_dirs, person_files):
     min_face_widht, min_face_height = map(lambda x: int(x), args.min_face_dims.split("x"))
-    face_detector = FaceDetector()
-    person_counter = 0
     (dir, files) = person_files
-    person_counter += 1
-    file_counter = 0
-    output_person_dir = args.output_dir + "/" + os.path.basename(dir)
-    mkpath(output_person_dir)
+    face_detector = FaceDetector()
     face_filter = FaceFilter(face_detector)
+    centroid_filter = CentroidFilter()
+    single_face_images = []
     for person_file in files:
         print person_file
         error, result = face_filter.filter(person_file, min_face_widht, min_face_height)
-        if result:
-            file_counter += 1
-            shutil.copyfile(person_file, output_person_dir + "/" + os.path.basename(person_file))
-            if args.max_photos != -1 and file_counter >= args.max_photos:
-                break
+        if not error:
+            single_face_images.append(person_file)
         else:
-            print error
-    print("person counter: %s" % person_counter)
+            print result
+            if error == Errors.MANY_FACES:
+                output_dirs.copy_to_multi_faces(person_file)
+                pass
+            elif error == Errors.SMALL_FACE:
+                output_dirs.copy_to_small_faces(person_file)
+            elif error == Errors.NO_FACES:
+                output_dirs.copy_to_no_faces(person_file)
+    print "generating embeddings, apply centroid filtering"
+    bad, good = centroid_filter.filter(single_face_images, 0.5)
+
+    for record in bad:
+        output_dirs.copy_to_outlier_faces(record[0])
+
+    max = args.max_photos if args.max_photos != -1 else len(good)
+    good = good[:max]
+    for record in good:
+        output_dirs.copy_to_cleaned(record[0])
+    output_dirs.save_embeddings(dir, good)
 
 
 def parse_arguments(argv):
@@ -60,7 +76,6 @@ def parse_arguments(argv):
     parser.add_argument('--max-persons', type=int, help='Max number of persons', default=-1)
     parser.add_argument('--min-face-dims', type=str, help='Min dims(widthxheight) of face', default="100x100")
     parser.add_argument('--threads', type=int, help='Num of threads to use', default=6)
-    # parser.add_argument('--num-faces', type=int, help='Max number of faces on image', default=1)
     return parser.parse_args(argv)
 
 
