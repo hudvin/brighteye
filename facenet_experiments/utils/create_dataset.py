@@ -1,12 +1,7 @@
 import argparse
-import csv
-import distutils
 import glob
-import os
 import sys
-from distutils.dir_util import mkpath
 
-import shutil
 from functools import partial
 
 import multiprocessing
@@ -35,35 +30,36 @@ def main(args):
 def process_persons(args, output_dirs, person_files):
     min_face_widht, min_face_height = map(lambda x: int(x), args.min_face_dims.split("x"))
     (dir, files) = person_files
-    face_detector = FaceDetector()
-    face_filter = FaceFilter(face_detector)
-    centroid_filter = CentroidFilter()
-    single_face_images = []
-    for person_file in files:
-        print person_file
-        error, result = face_filter.filter(person_file, min_face_widht, min_face_height)
-        if not error:
-            single_face_images.append(person_file)
-        else:
-            print result
-            if error == Errors.MANY_FACES:
-                output_dirs.copy_to_multi_faces(person_file)
-                pass
-            elif error == Errors.SMALL_FACE:
-                output_dirs.copy_to_small_faces(person_file)
-            elif error == Errors.NO_FACES:
-                output_dirs.copy_to_no_faces(person_file)
-    print "generating embeddings, apply centroid filtering"
-    bad, good = centroid_filter.filter(single_face_images, 0.5)
+    if not output_dirs.is_embeddings_exist(dir):
+        face_detector = FaceDetector()
+        face_filter = FaceFilter(face_detector)
+        centroid_filter = CentroidFilter()
+        single_face_images = []
+        for person_file in files:
+            print person_file
+            error, result = face_filter.filter(person_file, min_face_widht, min_face_height)
+            if not error:
+                single_face_images.append(person_file)
+            else:
+                print result
+                if error == Errors.MANY_FACES:
+                    output_dirs.copy_to_multi_faces(person_file)
+                    pass
+                elif error == Errors.SMALL_FACE:
+                    output_dirs.copy_to_small_faces(person_file)
+                elif error == Errors.NO_FACES:
+                    output_dirs.copy_to_no_faces(person_file)
+        print "generating embeddings, apply centroid filtering"
+        bad, good = centroid_filter.filter(single_face_images, 0.5)
 
-    for record in bad:
-        output_dirs.copy_to_outlier_faces(record[0])
+        for record in bad:
+            output_dirs.copy_to_outlier_faces(record[0])
 
-    max = args.max_photos if args.max_photos != -1 else len(good)
-    good = good[:max]
-    for record in good:
-        output_dirs.copy_to_cleaned(record[0])
-    output_dirs.save_embeddings(dir, good)
+        max = args.max_photos if args.max_photos != -1 else len(good)
+        good = good[:max]
+        for record in good:
+            output_dirs.copy_to_cleaned(record[0])
+        output_dirs.save_embeddings(dir, good)
 
 
 def parse_arguments(argv):
@@ -75,7 +71,7 @@ def parse_arguments(argv):
     parser.add_argument('--max-photos', type=int, help='Number of photos per each person', default=-1)
     parser.add_argument('--max-persons', type=int, help='Max number of persons', default=-1)
     parser.add_argument('--min-face-dims', type=str, help='Min dims(widthxheight) of face', default="100x100")
-    parser.add_argument('--threads', type=int, help='Num of threads to use', default=6)
+    parser.add_argument('--threads', type=int, help='Num of threads to use', default=5)
     return parser.parse_args(argv)
 
 

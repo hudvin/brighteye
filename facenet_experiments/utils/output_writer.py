@@ -59,6 +59,10 @@ class OutputWriter:
     def copy_to_no_faces(self, src):
         self.__copy_file(src, self.no_faces_dir)
 
+    def is_embeddings_exist(self, src):
+        file_path = os.path.join(self.embeddings, os.path.basename(src) + ".csv")
+        return os.path.exists(file_path)
+
     def save_embeddings(self, src, data):
         file_path = os.path.join(self.embeddings, os.path.basename(src) + ".csv")
 
