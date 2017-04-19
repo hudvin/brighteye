@@ -20,6 +20,16 @@ class Errors:
     NO_FACES = 40
     none = None
 
+class ImageFilter:
+
+    def is_grey(self, im):
+        b, g, r = cv2.split(im)
+        is_grey = (cv2.absdiff(b, g).sum() == 0 and cv2.absdiff(b, r).sum() == 0)
+        return is_grey
+
+    def filter(self, image):
+        pass
+
 
 class FaceFilter:
     def __init__(self, face_detector):
@@ -51,7 +61,7 @@ class EmbeddingsExtractor:
             get_abs_path(current_dir, "/../dlib_models/dlib_face_recognition_resnet_model_v1.dat"))
 
     def get_embeddings(self, person_file):
-        image = io.imread(person_file)
+        image = cv2.imread(person_file)
         if len(image.shape) == 3:
             if image.shape[2] == 4:
                 # drop alpha channel
