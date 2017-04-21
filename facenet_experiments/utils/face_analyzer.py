@@ -2,10 +2,18 @@ import os
 
 import cv2
 import dlib
-from os.path import basename
-from skimage import io
 import numpy as np
 from scipy.spatial import distance
+
+
+class CvImage:
+
+    def __init__(self, file_path):
+        self.src = file_path
+        self.image = cv2.imread(file_path)
+
+    def __str__(self):
+        return "cv2 image, path: %s" % self.src
 
 
 def get_abs_path(current_dir, relative_path):
@@ -20,23 +28,20 @@ class Errors:
     NO_FACES = 40
     none = None
 
-class ImageFilter:
+class BWFilter:
 
-    def is_grey(self, im):
-        b, g, r = cv2.split(im)
+    def filter(self, cv_image):
+        b, g, r = cv2.split(cv_image.image)
         is_grey = (cv2.absdiff(b, g).sum() == 0 and cv2.absdiff(b, r).sum() == 0)
         return is_grey
-
-    def filter(self, image):
-        pass
 
 
 class FaceFilter:
     def __init__(self, face_detector):
         self.face_detector = face_detector
 
-    def filter(self, person_file, min_width, min_height):
-        faces = self.face_detector.find_faces(cv2.imread(person_file))
+    def filter(self, cv_image, min_width, min_height):
+        faces = self.face_detector.find_faces(cv_image)
         if not faces:
             return Errors.NO_FACES, None
         elif len(faces) > 1:
@@ -60,8 +65,8 @@ class EmbeddingsExtractor:
         self.face_recognizer = dlib.face_recognition_model_v1(
             get_abs_path(current_dir, "/../dlib_models/dlib_face_recognition_resnet_model_v1.dat"))
 
-    def get_embeddings(self, person_file):
-        image = cv2.imread(person_file)
+    def get_embeddings(self, cv_image):
+        image = cv_image.image
         if len(image.shape) == 3:
             if image.shape[2] == 4:
                 # drop alpha channel
@@ -69,10 +74,7 @@ class EmbeddingsExtractor:
             detected_faces = self.detector(image, 1)
             shape = self.shape_predictor(image, detected_faces[0])
             face_descriptor = list(self.face_recognizer.compute_face_descriptor(image, shape))
-            return None, {"file": person_file, "embeddings": face_descriptor},
-        elif len(image.shape) == 2:
-            return Errors.BW_IMAGE, "image is BW"
-
+            return None, face_descriptor
 
 class CentroidFilter:
     def __init__(self):
@@ -86,7 +88,7 @@ class CentroidFilter:
             try:
                 error, result = self.embeddings_extractor.get_embeddings(person_file)
                 if not error:
-                    data_list.append(np.array([result["file"]] + result["embeddings"]))
+                    data_list.append(np.array([person_file] + result))
                 else:
                     print "can't extract embeddings for %s" % person_file, result
             except Exception as e:
@@ -97,7 +99,7 @@ class CentroidFilter:
         # extract embeddings column and convert it to float
         embeddings = np.delete(data_list, 0, 1).astype(float)
         # get labels column, by some reason last part is required
-        labels = data_list[:, [0]][:, 0]
+        cv_images = data_list[:, [0]][:, 0]
         # calculate centroid
         centroid = np.array([np.mean(row) for row in embeddings.T])
         # convert it to row
@@ -105,9 +107,10 @@ class CentroidFilter:
         # 128 elements in row
         distances = np.array([distance.euclidean(centroid, row) for row in embeddings])
 
+        #label - path - embedidngs
         labels_distance_embeddings = [
-            (label, os.path.normpath(label).split(os.sep)[-2:-1][0], centroid_distance, embedding.tolist())
-            for label, centroid_distance, embedding in zip(labels, distances, embeddings)
+            (cv_image.src, os.path.normpath(cv_image.src).split(os.sep)[-2:-1][0], centroid_distance, embedding.tolist())
+            for cv_image, centroid_distance, embedding in zip(cv_images, distances, embeddings)
             ]
         labels_distance_embeddings.sort(key=lambda rec: rec[2])
         bad = [rec for rec in labels_distance_embeddings if rec[2] > threshold]
@@ -119,8 +122,8 @@ class FaceDetector:
     def __init__(self):
         self.face_detector = dlib.get_frontal_face_detector()
 
-    def find_faces(self, image_bytes):
-        detection_results = self.face_detector(image_bytes, 1)
+    def find_faces(self, cv_image):
+        detection_results = self.face_detector(cv_image.image, 1)
         faces = []
         for i, face_rect in enumerate(detection_results):
             print("Detection {}: Left: {} Top: {} Right: {} Bottom: {}".format(

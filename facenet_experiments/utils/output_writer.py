@@ -8,6 +8,7 @@ import shutil
 
 
 class OutputWriter:
+    bw_dir = "bw/"
     cleaned_dir = "cleaned/"
     multi_faces_dir = "multi_faces/"
     outlier_faces_dir = "outlier_faces/"
@@ -24,6 +25,7 @@ class OutputWriter:
         self.small_faces_dir = build_path(self.small_faces_dir)
         self.no_faces_dir = build_path(self.no_faces_dir)
         self.embeddings = build_path(self.embeddings)
+        self.bw_dir = build_path(self.bw_dir)
 
         mkpath(self.cleaned_dir)
         mkpath(self.multi_faces_dir)
@@ -43,6 +45,9 @@ class OutputWriter:
         dst = self._get_dst_path(src, dst_dir)
         distutils.dir_util.mkpath(os.path.dirname(dst))
         shutil.copyfile(src, dst)
+
+    def copy_to_bw(self, src):
+        self.__copy_file(src, self.bw_dir)
 
     def copy_to_cleaned(self, src):
         self.__copy_file(src, self.cleaned_dir)

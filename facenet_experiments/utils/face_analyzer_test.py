@@ -2,23 +2,27 @@ import glob
 import os
 import unittest
 
-from face_analyzer import EmbeddingsExtractor, FaceDetector, FaceFilter, CentroidFilter
+
+from face_analyzer import EmbeddingsExtractor, FaceDetector, FaceFilter, CentroidFilter, CvImage
 
 faces_800_root = os.environ['faces_800']
 
 
 class FaceAnalyzerTest(unittest.TestCase):
+
     @unittest.skip
     def test_embeddings_extractor(self):
         embeddings_extractor = EmbeddingsExtractor()
-        result, error = embeddings_extractor.get_embeddings("facenet_experiments/images/portman1.jpg")
-        print result, error
+        error, result = embeddings_extractor.get_embeddings(CvImage("facenet_experiments/images/portman1.jpg"))
+        print error, result
 
+    #@unittest.skip
     def test_outliers_detector(self):
         face_filter = FaceFilter(FaceDetector())
         persons_dir = glob.glob(faces_800_root + "David Hidalgo/*.jpg")
 
         files = []
+        persons_dir = [CvImage(file) for file in persons_dir]
         for person_file in persons_dir:
             error, result = face_filter.filter(person_file, 100, 100)
             if result:
