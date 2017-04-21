@@ -1,16 +1,15 @@
 import argparse
 import glob
+import multiprocessing
 import sys
 import traceback
-
 from functools import partial
 
-import multiprocessing
+from dataset.centroid_filter import CentroidFilter
+from dataset.face_analyzer import FaceDetector, FaceFilter, Errors, BWFilter
+from dataset.output_writer import OutputWriter
 
-from face_analyzer import FaceDetector, FaceFilter, Errors, BWFilter
-from output_writer import OutputWriter
-from centroid_filter import CentroidFilter
-from cv_image import CvImage
+from facenet_experiments.utils.dataset.cv_image import CvImage
 
 
 def main(args):

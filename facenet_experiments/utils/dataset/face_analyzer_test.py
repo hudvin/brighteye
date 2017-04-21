@@ -13,7 +13,7 @@ class FaceAnalyzerTest(unittest.TestCase):
     @unittest.skip
     def test_embeddings_extractor(self):
         embeddings_extractor = EmbeddingsExtractor()
-        error, result = embeddings_extractor.get_embeddings(CvImage("facenet_experiments/images/portman1.jpg"))
+        error, result = embeddings_extractor.get_embeddings(CvImage("../facenet_experiments/images/portman1.jpg"))
         print error, result
 
     #@unittest.skip

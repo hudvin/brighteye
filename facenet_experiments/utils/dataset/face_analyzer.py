@@ -49,9 +49,9 @@ class EmbeddingsExtractor:
         self.detector = dlib.get_frontal_face_detector()
         current_dir = (os.path.dirname(os.path.realpath(__file__)))
         self.shape_predictor = dlib.shape_predictor(
-            get_abs_path(current_dir, "/../dlib_models/shape_predictor_68_face_landmarks.dat"))
+            get_abs_path(current_dir, "/../../dlib_models/shape_predictor_68_face_landmarks.dat"))
         self.face_recognizer = dlib.face_recognition_model_v1(
-            get_abs_path(current_dir, "/../dlib_models/dlib_face_recognition_resnet_model_v1.dat"))
+            get_abs_path(current_dir, "/../../dlib_models/dlib_face_recognition_resnet_model_v1.dat"))
 
     def get_embeddings(self, cv_image):
         image = cv_image.image
