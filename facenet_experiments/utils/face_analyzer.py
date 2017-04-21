@@ -2,18 +2,6 @@ import os
 
 import cv2
 import dlib
-import numpy as np
-from scipy.spatial import distance
-
-
-class CvImage:
-
-    def __init__(self, file_path):
-        self.src = file_path
-        self.image = cv2.imread(file_path)
-
-    def __str__(self):
-        return "cv2 image, path: %s" % self.src
 
 
 def get_abs_path(current_dir, relative_path):
@@ -26,10 +14,10 @@ class Errors:
     OUTLIER = 20
     BW_IMAGE = 30
     NO_FACES = 40
-    none = None
+    NO_ERROR = None
+
 
 class BWFilter:
-
     def filter(self, cv_image):
         b, g, r = cv2.split(cv_image.image)
         is_grey = (cv2.absdiff(b, g).sum() == 0 and cv2.absdiff(b, r).sum() == 0)
@@ -75,47 +63,6 @@ class EmbeddingsExtractor:
             shape = self.shape_predictor(image, detected_faces[0])
             face_descriptor = list(self.face_recognizer.compute_face_descriptor(image, shape))
             return None, face_descriptor
-
-class CentroidFilter:
-    def __init__(self):
-        self.embeddings_extractor = EmbeddingsExtractor()
-
-    def filter(self, person_files, threshold):
-        data_list = []
-        for person_file in person_files:
-            # because it can take list of files as argument
-            # so we pass list and get list
-            try:
-                error, result = self.embeddings_extractor.get_embeddings(person_file)
-                if not error:
-                    data_list.append(np.array([person_file] + result))
-                else:
-                    print "can't extract embeddings for %s" % person_file, result
-            except Exception as e:
-                print e, person_file
-
-        # convert to np array
-        data_list = np.array(data_list)
-        # extract embeddings column and convert it to float
-        embeddings = np.delete(data_list, 0, 1).astype(float)
-        # get labels column, by some reason last part is required
-        cv_images = data_list[:, [0]][:, 0]
-        # calculate centroid
-        centroid = np.array([np.mean(row) for row in embeddings.T])
-        # convert it to row
-        centroid = centroid.T
-        # 128 elements in row
-        distances = np.array([distance.euclidean(centroid, row) for row in embeddings])
-
-        #label - path - embedidngs
-        labels_distance_embeddings = [
-            (cv_image.src, os.path.normpath(cv_image.src).split(os.sep)[-2:-1][0], centroid_distance, embedding.tolist())
-            for cv_image, centroid_distance, embedding in zip(cv_images, distances, embeddings)
-            ]
-        labels_distance_embeddings.sort(key=lambda rec: rec[2])
-        bad = [rec for rec in labels_distance_embeddings if rec[2] > threshold]
-        good = [rec for rec in labels_distance_embeddings if rec[2] <= threshold]
-        return bad, good
 
 
 class FaceDetector:

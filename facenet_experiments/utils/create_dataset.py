@@ -7,8 +7,10 @@ from functools import partial
 
 import multiprocessing
 
-from face_analyzer import FaceDetector, FaceFilter, CentroidFilter, Errors, CvImage, BWFilter
+from face_analyzer import FaceDetector, FaceFilter, Errors, BWFilter
 from output_writer import OutputWriter
+from centroid_filter import CentroidFilter
+from cv_image import CvImage
 
 
 def main(args):
@@ -78,7 +80,7 @@ def parse_arguments(argv):
     parser.add_argument('--max-photos', type=int, help='Number of photos per each person', default=-1)
     parser.add_argument('--max-persons', type=int, help='Max number of persons', default=-1)
     parser.add_argument('--min-face-dims', type=str, help='Min dims(widthxheight) of face', default="100x100")
-    parser.add_argument('--threads', type=int, help='Num of threads to use', default=1)
+    parser.add_argument('--threads', type=int, help='Num of threads to use', default=6)
     parser.add_argument('--skip-bw', type=bool, help='Skip grayscale images', default=True)
     return parser.parse_args(argv)
 
