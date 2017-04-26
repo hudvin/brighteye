@@ -9,7 +9,7 @@ from dataset.centroid_filter import CentroidFilter
 from dataset.face_analyzer import FaceDetector, FaceFilter, Errors, BWFilter
 from dataset.output_writer import OutputWriter
 
-from facenet_experiments.utils.dataset.cv_image import CvImage
+from utils.dataset.cv_image import CvImage
 
 
 def main(args):
